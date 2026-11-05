@@ -1,0 +1,10 @@
+name = "zombonk-upload"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# UPLOAD_PASSWORD and STORE_GITHUB_TOKEN are secrets, set by the deploy
+# workflow from the repository's Actions secrets. Never put them here.
+
+[vars]
+REPO = "stripesvr/zombonk-store"
+BRANCH = "main"

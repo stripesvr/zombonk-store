@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0b0d">
+<meta name="robots" content="noindex">
+<title>Publish a Mod</title>
+<link rel="icon" href="https://stripes.lol/assets/img/151.png">
+<!-- Shared look from stripes.lol; the rules below only add the form pieces it doesn't have. -->
+<link rel="stylesheet" href="https://stripes.lol/assets/css/styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root { --bg:#0b0b0d; --surface:#121216; --surface-raised:#17171c; --border:#22222a; --border-strong:#32323d; --text:#ededf0; --text-muted:#9a9aa6; --text-faint:#5f5f6b; --accent:#2fd67a; --accent-hover:#52e394; --danger:#ff5a5f; --ok:#6fcf8f; --radius-sm:10px; --radius-lg:18px; --font-sans:"Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --font-mono:ui-monospace, Consolas, monospace; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font-sans); margin:0; }
+  /* Green theme over the shared stripes.lol stylesheet. */
+  body::before { background:radial-gradient(60% 40% at 50% -8%, rgba(47,214,122,.12), transparent 70%); }
+  .btn-primary { color:#04170c; }
+  .btn-primary:hover { color:#04170c; }
+  .page { padding-top:48px; }
+  /* Before unlocking, the page is only the sign-in card. */
+  body:not(.gate) .gate-only { display:none !important; }
+  body.gate .gate-only { display:block; }
+  body.gate .header, body.gate .footer, body.gate .step:not(#step1), body.gate #storeCard, body.gate #step1 .step-head { display:none !important; }
+  body.gate .page { justify-content:center; align-items:center; padding-top:24px; padding-bottom:24px; min-height:100vh; min-height:100dvh; }
+  body.gate main { width:100%; max-width:380px; }
+  body.gate #step1 { padding:32px 26px 26px; text-align:center; opacity:1; box-shadow:0 30px 80px -30px rgba(47,214,122,.25); animation:rise .5s var(--ease, ease) both; }
+  body.gate #step1 .step-body { gap:14px; }
+  .gate-avatar { width:76px; height:76px; margin:0 auto 14px; border-radius:50%; padding:3px; background:conic-gradient(from 210deg, var(--accent), #b6f36a, var(--accent)); }
+  .gate-avatar img { display:block; width:100%; height:100%; border-radius:50%; object-fit:cover; border:3px solid var(--surface); box-sizing:border-box; }
+  .gate-title { margin:0; font-size:1.35rem; font-weight:700; letter-spacing:-0.02em; }
+  .gate-sub { margin:6px 0 4px; font-size:0.875rem; color:var(--text-muted); }
+  body.gate .pw-row { flex-direction:column; }
+  .pw-wrap { position:relative; }
+  .pw-wrap svg { position:absolute; left:14px; top:50%; width:17px; height:17px; transform:translateY(-50%); color:var(--text-faint); pointer-events:none; }
+  body.gate #password { height:48px; padding-left:40px; }
+  body.gate #login { height:48px; width:100%; font-size:0.9375rem; }
+  body.gate #loginErr { text-align:left; }
+  .or { display:flex; align-items:center; gap:10px; font-size:0.75rem; color:var(--text-faint); text-transform:uppercase; letter-spacing:.12em; }
+  .or::before, .or::after { content:""; flex:1; height:1px; background:var(--border); }
+  #guest { height:46px; width:100%; }
+  /* Guests skip the unlock step and only see the submit form. */
+  body.guest #step1, body.guest #storeCard, body.guest #subsCard { display:none !important; }
+  .sub-item { display:flex; flex-direction:column; gap:8px; padding:14px 0; border-top:1px solid var(--border); }
+  .sub-item:first-of-type { border-top:0; padding-top:4px; }
+  .sub-top { display:flex; justify-content:space-between; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  .sub-name { font-weight:600; }
+  .sub-meta { font-size:0.8125rem; color:var(--text-muted); }
+  .sub-text { font-size:0.875rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .sub-item .actions .btn { height:34px; padding:0 12px; font-size:0.8125rem; }
+  .btn-ok { border-color:rgba(111,207,143,.45); color:var(--ok); }
+  .btn-ok:hover { background:rgba(111,207,143,.1); border-color:rgba(111,207,143,.6); }
+  .count { display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 6px; margin-left:6px; border-radius:999px; background:var(--accent); color:#fff; font-size:0.75rem; font-weight:700; vertical-align:2px; }
+  .gate-foot { margin-top:16px; font-size:0.75rem; color:var(--text-faint); }
+  .shake { animation:shake .4s ease; }
+  @keyframes shake { 20%,60% { transform:translateX(-6px); } 40%,80% { transform:translateX(6px); } }
+  @keyframes rise { from { opacity:0; transform:translateY(10px); } }
+  [hidden] { display:none !important; }
+  .stack { display:flex; flex-direction:column; gap:14px; }
+  .lede { margin:10px 0 0; color:var(--text-muted); font-size:0.9375rem; }
+
+  /* Steps */
+  .step-head { display:flex; align-items:center; gap:12px; }
+  .step-num { flex:none; width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:0.8125rem; font-weight:700; background:var(--surface-raised); border:1px solid var(--border-strong); color:var(--text-muted); transition:all .2s ease; }
+  .step.active .step-num { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .step.done .step-num { background:rgba(111,207,143,.12); border-color:rgba(111,207,143,.45); color:var(--ok); }
+  .step.done .step-num { font-size:0; }
+  .step.done .step-num::after { content:"\2713"; font-size:0.875rem; }
+  .card h2 { margin:0; font-size:1rem; font-weight:600; }
+  .step-sub { margin:2px 0 0; font-size:0.8125rem; color:var(--text-muted); }
+  .step.locked { opacity:.45; }
+  .step.locked .step-body { display:none; }
+  .step-body { display:flex; flex-direction:column; gap:12px; }
+
+  label { display:block; font-size:0.8125rem; color:var(--text-muted); margin:0 0 6px; }
+  label .req { color:var(--accent); }
+  .field-hint { font-size:0.75rem; color:var(--text-faint); margin:5px 0 0; }
+  input, textarea { width:100%; box-sizing:border-box; background:#0c0c0f; color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; font:inherit; font-size:0.9375rem; transition:border-color .2s ease; }
+  input:focus, textarea:focus { outline:none; border-color:var(--border-strong); }
+  textarea { min-height:96px; resize:vertical; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:560px) { .grid2 { grid-template-columns:1fr; } }
+  .pw-row { display:flex; gap:10px; }
+  .pw-row input { flex:1; min-width:0; }
+
+  /* Drop zone */
+  .drop { border:1.5px dashed var(--border-strong); border-radius:var(--radius-lg); padding:30px 16px; text-align:center; color:var(--text-muted); font-size:0.875rem; cursor:pointer; transition:border-color .2s ease, background-color .2s ease; }
+  .drop:hover, .drop.over { border-color:var(--accent); background:rgba(47,214,122,.05); color:var(--text); }
+  .drop svg { width:30px; height:30px; color:var(--text-muted); margin-bottom:6px; }
+  .drop strong { display:block; color:var(--text); font-size:0.9375rem; margin-bottom:2px; }
+  .file-ok { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid rgba(111,207,143,.35); background:rgba(111,207,143,.06); border-radius:var(--radius-sm); }
+  .file-ok .meta { flex:1; min-width:0; }
+  .file-ok .fname { font-weight:600; font-size:0.9375rem; overflow-wrap:anywhere; }
+  .file-ok .fsub { font-size:0.8125rem; color:var(--text-muted); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .chip { font:0.75rem var(--font-mono); padding:2px 8px; border-radius:999px; background:var(--surface-raised); border:1px solid var(--border); color:var(--ok); overflow-wrap:anywhere; }
+
+  /* Notices */
+  .notice { padding:10px 12px; border-radius:var(--radius-sm); font-size:0.875rem; border:1px solid var(--border); background:var(--surface-raised); }
+  .notice.err { border-color:rgba(255,77,85,.4); background:rgba(255,77,85,.07); color:#ffb3b6; }
+  .notice.good { border-color:rgba(111,207,143,.4); background:rgba(111,207,143,.07); color:#bfeacd; }
+  .notice.info { border-color:rgba(232,178,58,.35); background:rgba(232,178,58,.08); color:#f0d18a; }
+
+  /* Preview */
+  .preview { display:flex; gap:14px; align-items:center; padding:14px; border:1px solid var(--border); border-radius:var(--radius-lg); background:#0c0c0f; }
+  .preview .thumb { flex:none; width:56px; height:56px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(135deg,#173a26,#1d2a3a); }
+  .preview .thumb svg { width:26px; height:26px; color:rgba(255,255,255,.75); }
+  .preview .pname { font-weight:600; overflow-wrap:anywhere; }
+  .preview .pmeta { font-size:0.8125rem; color:var(--text-muted); }
+  .preview .pdesc { font-size:0.875rem; margin-top:2px; overflow-wrap:anywhere; }
+  .preview-label { font-size:0.75rem; letter-spacing:.12em; text-transform:uppercase; color:var(--text-faint); margin:4px 0 -4px; }
+
+  .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn-lg { height:46px; padding:0 22px; font-size:0.9375rem; }
+  .hint { font-size:0.8125rem; color:var(--text-muted); margin:0; }
+  .bad { color:var(--danger); }
+
+  /* Progress */
+  .progress-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:0.875rem; }
+  .progress-list li { display:flex; align-items:center; gap:8px; color:var(--text-faint); }
+  .progress-list li.doing { color:var(--text); }
+  .progress-list li.done { color:var(--ok); }
+  .progress-list li::before { content:""; width:8px; height:8px; border-radius:50%; background:currentColor; flex:none; }
+  .progress-list li.doing::before { animation:pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.25; } }
+
+  .success { text-align:center; padding:8px 0; }
+  .success .big { font-size:2.2rem; line-height:1; color:var(--ok); }
+  .success h2 { margin:10px 0 4px; font-size:1.15rem; }
+
+  /* Store list */
+  ul.mods { list-style:none; margin:0; padding:0; }
+  ul.mods li { padding:10px 0; border-top:1px solid var(--border); }
+  ul.mods .mrow { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  ul.mods .btn .chev { width:14px; height:14px; transition:transform .2s ease; }
+  ul.mods li.open .btn .chev { transform:rotate(180deg); }
+  ul.mods .mbtns { display:flex; gap:8px; flex:none; }
+  ul.mods .btn-del { color:var(--text-muted); }
+  ul.mods .btn-del:hover { color:var(--danger); border-color:rgba(255,77,85,.45); background:rgba(255,77,85,.06); }
+  ul.mods li.open > .mrow .btn-upd { background:var(--surface-raised); border-color:var(--border-strong); }
+  .upd { display:grid; grid-template-rows:0fr; transition:grid-template-rows .25s var(--ease, ease); }
+  li.open .upd { grid-template-rows:1fr; }
+  .upd > div { overflow:hidden; }
+  .upd-inner { display:flex; flex-direction:column; gap:12px; margin-top:12px; padding:14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#0c0c0f; }
+  .upd-inner .drop { padding:18px 12px; }
+  .upd-inner input, .upd-inner textarea { background:var(--surface); }
+  .upd-inner textarea { min-height:70px; }
+  ul.mods li:first-child { border-top:0; }
+  ul.mods .mname { font-weight:600; font-size:0.9375rem; }
+  ul.mods small { color:var(--text-muted); font-size:0.8125rem; }
+  ul.mods .btn { height:34px; padding:0 12px; font-size:0.8125rem; }
+</style>
+</head>
+<body class="gate">
+<div class="page">
+  <header class="header">
+    <p class="eyebrow">Zombonk mod store</p>
+    <h1 class="title" id="pageTitle">Publish a Mod</h1>
+    <p class="lede" id="lede">Add your mod's zip and describe it. It shows up in everyone's Zombonk a few minutes later.</p>
+  </header>
+
+  <main class="stack">
+    <section class="card" id="subsCard" hidden>
+      <div><h2>Submissions<span class="count" id="subsCount" hidden></span></h2><p class="step-sub" id="subsSub">Mods sent in by guests. Approve to put one in the store.</p></div>
+      <div class="notice err" id="subsErr" hidden></div>
+      <div id="subs"></div>
+    </section>
+
+    <section class="card step active" id="step1">
+      <div class="step-head">
+        <span class="step-num">1</span>
+        <div><h2>Unlock</h2><p class="step-sub" id="s1sub">Enter the upload password.</p></div>
+      </div>
+      <div class="gate-only">
+        <div class="gate-avatar"><img src="https://stripes.lol/assets/img/151.png" alt=""></div>
+        <h1 class="gate-title">Zombonk Mod Store</h1>
+        <p class="gate-sub">Sign in to manage the store, or continue as a guest to submit a mod.</p>
+      </div>
+      <div class="step-body">
+        <form class="pw-row" id="loginForm">
+          <div class="pw-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <input id="password" type="password" placeholder="Password" autocomplete="off" aria-label="Upload password">
+          </div>
+          <button class="btn btn-primary" id="login" type="submit">Unlock</button>
+        </form>
+        <div class="notice err" id="loginErr" hidden></div>
+        <div class="gate-only or">or</div>
+        <button class="gate-only btn btn-ghost" id="guest" type="button">Continue as guest</button>
+      </div>
+      <p class="gate-only gate-foot">stripes.lol</p>
+    </section>
+
+    <section class="card step locked" id="step2">
+      <div class="step-head">
+        <span class="step-num">2</span>
+        <div><h2>Add your mod's zip</h2><p class="step-sub" id="s2sub">The zip must contain a .pak, .ucas and .utoc with the same name.</p></div>
+      </div>
+      <div class="step-body">
+        <div id="drop" class="drop" role="button" tabindex="0" aria-label="Choose a zip file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg>
+          <strong>Drop the .zip here</strong>or click to pick it from your computer
+        </div>
+        <div class="file-ok" id="fileOk" hidden>
+          <div class="meta">
+            <div class="fname" id="fileName"></div>
+            <div class="fsub" id="fileSub"></div>
+            <div class="chips" id="fileChips"></div>
+          </div>
+          <button class="btn btn-ghost" id="changeFile" type="button">Change</button>
+        </div>
+        <div class="notice err" id="fileErr" hidden></div>
+        <input id="file" type="file" accept=".zip,application/zip" hidden>
+      </div>
+    </section>
+
+    <section class="card step locked" id="step3">
+      <div class="step-head">
+        <span class="step-num">3</span>
+        <div><h2>Describe it and release</h2><p class="step-sub">This is what players see in Zombonk.</p></div>
+      </div>
+      <div class="step-body" id="formBody">
+        <div class="notice info" id="modeNote" hidden></div>
+        <div class="grid2">
+          <div><label for="name">Mod name <span class="req">*</span></label><input id="name" placeholder="e.g. Backflip Mod" maxlength="80"></div>
+          <div><label for="creator">Made by <span class="req">*</span></label><input id="creator" placeholder="e.g. MeiMei" maxlength="80"></div>
+        </div>
+        <div class="grid2">
+          <div><label for="version">Version</label><input id="version" value="1.0.0" maxlength="40"><p class="field-hint" id="versionHint">Raise it when you update a mod.</p></div>
+          <div><label for="tags">Tags</label><input id="tags" placeholder="visuals, fun" maxlength="300"><p class="field-hint">Separate with commas. Optional.</p></div>
+        </div>
+        <div><label for="summary">Short description</label><input id="summary" placeholder="One line, e.g. Makes you do backflips" maxlength="300"><p class="field-hint">Shown on the mod's card.</p></div>
+        <div><label for="about">About</label><textarea id="about" placeholder="Optional. Details, credits, how to use it." maxlength="5000"></textarea><p class="field-hint">Shown on the mod's page. Leave empty to reuse the short description.</p></div>
+
+        <p class="preview-label">Preview</p>
+        <div class="preview">
+          <div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg></div>
+          <div>
+            <div class="pname" id="pvName">Mod name</div>
+            <div class="pmeta" id="pvMeta">v1.0.0 by ...</div>
+            <div class="pdesc" id="pvDesc"></div>
+          </div>
+        </div>
+
+        <div class="notice err" id="relErr" hidden></div>
+        <div class="actions">
+          <button class="btn btn-primary btn-lg" id="publish" type="button" disabled>Release mod</button>
+          <span class="hint" id="whyDisabled"></span>
+        </div>
+      </div>
+
+      <div class="step-body" id="progressBody" hidden>
+        <ul class="progress-list" id="progress">
+          <li data-p="send">Uploading and publishing</li>
+          <li data-p="live">Done, going live in a few minutes</li>
+        </ul>
+      </div>
+
+      <div class="step-body success" id="successBody" hidden>
+        <div class="big">&#10003;</div>
+        <h2 id="successTitle"></h2>
+        <p class="hint" id="successText">It appears in Zombonk after the store refreshes, usually within a few minutes. Press <b>Save and load</b> in Zombonk's settings to check.</p>
+        <div class="actions" style="justify-content:center;margin-top:8px">
+          <button class="btn btn-primary" id="another" type="button">Release another mod</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="storeCard" hidden>
+      <div><h2>Already in the store</h2><p class="step-sub">Press Update on a mod to release a new version of it.</p></div>
+      <div class="notice good" id="storeMsg" hidden></div>
+      <input id="filter" type="search" placeholder="Search mods" aria-label="Search mods">
+      <ul id="mods" class="mods"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">stripes.lol</footer>
+</div>
+
+<script>
+// Uploads go through the store's Cloudflare Worker, which checks the password
+// and commits to GitHub. The password and GitHub token live only on the Worker.
+const UPLOAD_API = "https://zombonk-upload.wannabeweirdguy.workers.dev";
+const LIMIT = 100 * 1024 * 1024; // GitHub rejects larger single files
+const GUEST_LIMIT = 50 * 1024 * 1024;
+const $ = id => document.getElementById(id);
+let packed = null, mods = [], subs = [], guest = false;
+
+async function api(path, fields) {
+  const form = new FormData();
+  form.append("password", $("password").value);
+  for (const [k, v] of Object.entries(fields || {})) form.append(k, v);
+  let r;
+  try { r = await fetch(UPLOAD_API + path, { method: "POST", body: form }); }
+  catch { throw new Error("Couldn't reach the upload server. Check your internet and try again."); }
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || `Upload server error ${r.status}${r.status === 503 || r.status >= 520 ? " (the server ran out of time; try again, or tell the store owner)" : ""}`);
+  return body;
+}
+
+const show = (id, msg) => { $(id).textContent = msg || ""; $(id).hidden = !msg; };
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const size = n => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+const unlocked = () => !$("step2").classList.contains("locked");
+
+function setStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const el = $("step" + i);
+    el.classList.toggle("done", i < n);
+    el.classList.toggle("active", i === Math.min(n, 3));
+    el.classList.toggle("locked", i > n);
+  }
+}
+
+// ---------- Step 1: unlock ----------
+async function login(e) {
+  e?.preventDefault();
+  if (!$("password").value) return show("loginErr", "Type the password first.");
+  show("loginErr"); $("login").disabled = true; $("login").textContent = "Checking...";
+  try {
+    const res = await api("/login");
+    mods = res.mods; subs = res.submissions || [];
+    renderSubs(); $("subsCard").hidden = false;
+    $("s1sub").textContent = "Unlocked.";
+    document.body.classList.remove("gate");
+    $("loginForm").hidden = true;
+    renderMods(); $("storeCard").hidden = false;
+    setStep(packed ? 3 : 2);
+  } catch (err) {
+    show("loginErr", err.message);
+    $("step1").classList.remove("shake"); void $("step1").offsetWidth; $("step1").classList.add("shake");
+    $("password").select();
+  } finally { $("login").disabled = false; $("login").textContent = "Unlock"; }
+}
+
+async function enterGuest() {
+  guest = true;
+  document.body.classList.remove("gate"); document.body.classList.add("guest");
+  $("pageTitle").textContent = "Submit a Mod";
+  $("lede").textContent = "Send your mod in for review. Once it's approved, it shows up in everyone's Zombonk.";
+  $("step2").querySelector(".step-num").textContent = "1";
+  $("step3").querySelector(".step-num").textContent = "2";
+  $("step3").querySelector(".step-sub").textContent = "This is what players will see once it's approved.";
+  $("progress").children[0].textContent = "Sending your mod";
+  $("progress").children[1].textContent = "Sent for review";
+  $("successText").textContent = "The store owner will check it. If it's approved, it appears in Zombonk.";
+  $("another").textContent = "Submit another mod";
+  setStep(2); update();
+  // The public manifest lets the form spot updates to mods already in the store.
+  try { mods = (await (await fetch("manifest.json", { cache: "no-store" })).json()).mods || []; update(); } catch {}
+}
+
+// ---------- Submissions (admin) ----------
+const when = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); };
+
+function renderSubs() {
+  const box = $("subs"); box.textContent = "";
+  $("subsCount").textContent = subs.length; $("subsCount").hidden = !subs.length;
+  if (!subs.length) { box.innerHTML = '<p class="hint">Nothing waiting for review.</p>'; return; }
+  for (const sItem of subs) {
+    const el = document.createElement("div"); el.className = "sub-item";
+    el.innerHTML = `<div class="sub-top"><span class="sub-name"></span><span class="sub-meta" data-k="when"></span></div>
+      <div class="sub-meta" data-k="meta"></div><div class="sub-text" data-k="text"></div><div class="sub-meta" data-k="files"></div>
+      <div class="actions"><button class="btn btn-ok" data-a="approve" type="button">Approve and release</button><button class="btn btn-ghost" data-a="download" type="button">Download</button><button class="btn btn-ghost" data-a="reject" type="button">Reject</button><span class="hint" data-k="status"></span></div>`;
+    const prev = existingFor(sItem.name);
+    el.querySelector(".sub-name").textContent = `${sItem.name} v${sItem.version}`;
+    el.querySelector('[data-k="when"]').textContent = when(sItem.submitted);
+    el.querySelector('[data-k="meta"]').textContent = `by ${sItem.creator} · ${size(sItem.bytes || 0)}${sItem.tags ? " · " + sItem.tags : ""}${prev ? ` · updates ${prev.name} v${prev.version}` : " · new mod"}`;
+    el.querySelector('[data-k="text"]').textContent = [sItem.summary, sItem.about && sItem.about !== sItem.summary ? sItem.about : ""].filter(Boolean).join("\n\n");
+    el.querySelector('[data-k="files"]').textContent = sItem.patches ? `Files: ${sItem.patches}` : "";
+    const status = el.querySelector('[data-k="status"]');
+    el.querySelector('[data-a="download"]').onclick = () => download(sItem, status);
+    for (const action of ["approve", "reject"]) el.querySelector(`[data-a="${action}"]`).onclick = async () => {
+      if (action === "reject" && !confirm(`Reject ${sItem.name}? It will be deleted.`)) return;
+      el.querySelectorAll("button").forEach(b => b.disabled = true);
+      status.textContent = action === "approve" ? "Releasing..." : "Rejecting...";
+      try {
+        const res = await api("/review", { id: sItem.id, action });
+        if (res.mods) { mods = res.mods; renderMods(); }
+        subs = res.submissions; renderSubs();
+        show("subsErr"); $("subsSub").textContent = action === "approve" ? `Released ${sItem.name}. It goes live in a few minutes.` : `Rejected ${sItem.name}.`;
+      } catch (err) {
+        el.querySelectorAll("button").forEach(b => b.disabled = false);
+        status.textContent = ""; show("subsErr", err.message);
+      }
+    };
+    box.append(el);
+  }
+}
+
+async function download(sItem, status) {
+  status.textContent = "Downloading...";
+  try {
+    const form = new FormData(); form.append("password", $("password").value); form.append("id", sItem.id);
+    const r = await fetch(UPLOAD_API + "/download", { method: "POST", body: form });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `Error ${r.status}`);
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await r.blob()), download: `${slug(sItem.name) || "mod"}.zip` });
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    status.textContent = "";
+  } catch (err) { status.textContent = ""; show("subsErr", err.message); }
+}
+
+// ---------- Step 2: zip ----------
+// Same rules as add_mod.py: keep only complete .utoc/.ucas/.pak sets, flattened into a fresh zip.
+async function repack(file) {
+  let src;
+  try { src = await JSZip.loadAsync(file); } catch { throw new Error("That file couldn't be opened as a zip. Make sure it's a real .zip, not .rar or .7z."); }
+  const stems = {};
+  src.forEach((path, entry) => {
+    if (entry.dir) return;
+    const base = path.split("/").pop(), m = base.match(/^(.*)\.(utoc|ucas|pak)$/i);
+    if (m) (stems[m[1]] ||= {})[m[2].toLowerCase()] = entry;
+  });
+  const complete = Object.entries(stems).filter(([, fs]) => Object.keys(fs).length === 3);
+  if (!complete.length) {
+    const partial = Object.entries(stems)[0];
+    if (partial) {
+      const missing = ["pak", "ucas", "utoc"].filter(x => !partial[1][x]).map(x => "." + x).join(" and ");
+      throw new Error(`Found ${partial[0]} but it's missing its ${missing}. All three files need the same name.`);
+    }
+    throw new Error("No mod files found in that zip. It needs a .pak, .ucas and .utoc with the same name.");
+  }
+  const out = new JSZip();
+  for (const [stem, fs] of complete)
+    for (const [ext, entry] of Object.entries(fs)) out.file(`${stem}.${ext}`, await entry.async("uint8array"));
+  const bytes = await out.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+  const max = guest ? GUEST_LIMIT : LIMIT;
+  if (bytes.length > max) throw new Error(`That mod is ${size(bytes.length)}, over the ${max / 1048576} MB limit.`);
+  return { bytes, patches: complete.map(([s]) => s) };
+}
+
+async function pickFile(f) {
+  if (!f) return;
+  show("fileErr");
+  if (!/\.zip$/i.test(f.name)) return show("fileErr", `"${f.name}" isn't a .zip. Zip the mod's .pak, .ucas and .utoc first.`);
+  const label = $("drop").querySelector("strong");
+  label.textContent = "Checking...";
+  try {
+    packed = await repack(f);
+    $("fileName").textContent = f.name;
+    $("fileSub").textContent = `Looks good. ${size(packed.bytes.length)} after packing.`;
+    $("fileChips").textContent = "";
+    for (const p of packed.patches) for (const ext of ["pak", "ucas", "utoc"])
+      $("fileChips").append(Object.assign(document.createElement("span"), { className: "chip", textContent: `${p}.${ext}` }));
+    $("drop").hidden = true; $("fileOk").hidden = false;
+    $("s2sub").textContent = "Mod files found.";
+    // Suggest a name from the file, e.g. cdn-a2_backflip.zip -> A2 Backflip.
+    if (!$("name").value)
+      $("name").value = f.name.replace(/\.zip$/i, "").replace(/^cdn-/i, "").replace(/[_-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+    setStep(3); update();
+    $("name").focus(); $("name").select();
+  } catch (err) {
+    packed = null; show("fileErr", err.message);
+  } finally { label.textContent = "Drop the .zip here"; }
+}
+
+function clearFile() {
+  packed = null; $("file").value = "";
+  $("drop").hidden = false; $("fileOk").hidden = true;
+  $("s2sub").textContent = "The zip must contain a .pak, .ucas and .utoc with the same name.";
+  setStep(2); update();
+}
+
+// ---------- Step 3: details ----------
+function existingFor(name) {
+  const id = slug(name), lower = name.trim().toLowerCase();
+  return lower ? mods.find(m => m.id.toLowerCase() === id || m.name.toLowerCase() === lower) : null;
+}
+
+function update() {
+  const name = $("name").value.trim(), creator = $("creator").value.trim(), version = $("version").value.trim() || "1.0.0";
+  const prev = existingFor(name);
+  $("pvName").textContent = name || "Mod name";
+  $("pvMeta").textContent = `v${version} by ${creator || "..."}`;
+  $("pvDesc").textContent = $("summary").value.trim();
+
+  if (prev) {
+    show("modeNote", `"${prev.name}" is already in the store (v${prev.version}). ${guest ? "If approved, this replaces it." : "Releasing replaces it with this version."}`);
+    $("publish").textContent = guest ? "Submit update for review" : "Release update";
+    $("versionHint").innerHTML = version === prev.version
+      ? '<span class="bad">Same as the current version. Raise it so players see the update.</span>'
+      : `Currently v${prev.version}.`;
+  } else {
+    show("modeNote");
+    $("publish").textContent = guest ? "Submit for review" : "Release mod";
+    $("versionHint").textContent = "Raise it when you update a mod.";
+  }
+
+  const why = !packed ? "Add the zip in step 2 first." : !name ? "Give it a name." : !creator ? "Say who made it."
+    : !slug(name) ? "Use letters or numbers in the name." : "";
+  $("publish").disabled = !!why;
+  $("whyDisabled").textContent = why;
+}
+
+function progress(stage) {
+  const order = ["send", "live"], at = order.indexOf(stage);
+  for (const li of $("progress").children) {
+    const i = order.indexOf(li.dataset.p);
+    li.className = i < at || stage === "live" ? "done" : i === at ? "doing" : "";
+  }
+}
+
+async function publish() {
+  show("relErr");
+  const name = $("name").value.trim();
+  $("formBody").hidden = true; $("progressBody").hidden = false;
+  try {
+    progress("send");
+    const fields = {
+      name, creator: $("creator").value.trim(), version: $("version").value.trim(), tags: $("tags").value,
+      summary: $("summary").value, about: $("about").value,
+      file: new File([packed.bytes], "mod.zip", { type: "application/zip" }),
+    };
+    if (guest) {
+      await api("/submit", { ...fields, patches: packed.patches.map(p => `${p}.pak, ${p}.ucas, ${p}.utoc`).join("; ") });
+      progress("live");
+      $("successTitle").textContent = `${name} sent for review`;
+    } else {
+      const res = await api("/upload", fields);
+      progress("live");
+      mods = res.mods; renderMods();
+      $("successTitle").textContent = `${name} v${res.entry.version} ${res.updated ? "updated" : "released"}`;
+    }
+    $("progressBody").hidden = true; $("successBody").hidden = false;
+    setStep(4);
+  } catch (err) {
+    $("progressBody").hidden = true; $("formBody").hidden = false;
+    show("relErr", /wrong password/i.test(err.message) ? "The password was rejected. Reload the page and unlock again."
+      : /409/.test(err.message) ? "Someone else changed the store at the same moment. Press Release again."
+      : err.message);
+  }
+}
+
+function reset() {
+  for (const id of ["name", "creator", "tags", "summary", "about"]) $(id).value = "";
+  $("version").value = "1.0.0";
+  $("successBody").hidden = true; $("formBody").hidden = false;
+  clearFile();
+  $("step2").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ---------- Store list ----------
+// Suggest the next version: 1.0.0 -> 1.0.1, 7.1 -> 7.2, 2 -> 3.
+function bump(v) {
+  const m = String(v).match(/^(.*?)(\d+)(\D*)$/);
+  return m ? `${m[1]}${Number(m[2]) + 1}${m[3]}` : v;
+}
+
+function renderMods() {
+  const ul = $("mods"), q = $("filter").value.trim().toLowerCase();
+  ul.textContent = "";
+  const list = mods.filter(m => !q || `${m.name} ${m.creator}`.toLowerCase().includes(q));
+  if (!list.length) {
+    ul.innerHTML = `<li><small>${mods.length ? "No mods match that search." : "No mods yet. Yours will be the first."}</small></li>`;
+    return;
+  }
+  for (const m of list) {
+    const li = document.createElement("li");
+    li.innerHTML = `<div class="mrow"><div><div class="mname"></div><small></small></div>
+      <div class="mbtns"><button class="btn btn-ghost btn-del" type="button" aria-label="Delete">Delete</button><button class="btn btn-ghost btn-upd" type="button" aria-expanded="false">Update <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div></div>
+      <div class="upd"><div><div class="upd-inner"></div></div></div>`;
+    li.querySelector(".mname").textContent = m.name;
+    li.querySelector("small").textContent = `v${m.version} by ${m.creator}`;
+    const btn = li.querySelector(".btn-upd");
+    li.querySelector(".btn-del").onclick = () => removeMod(m, li);
+    btn.onclick = () => {
+      const open = !li.classList.contains("open");
+      for (const other of ul.querySelectorAll("li.open")) { other.classList.remove("open"); other.querySelector(".btn-upd").setAttribute("aria-expanded", "false"); }
+      if (open) { if (!li.querySelector(".upd-inner").childElementCount) buildUpdate(li.querySelector(".upd-inner"), m); li.classList.add("open"); }
+      btn.setAttribute("aria-expanded", String(open));
+    };
+    ul.append(li);
+  }
+}
+
+async function removeMod(m, li) {
+  if (!confirm(`Delete ${m.name} from the store? Players won't be able to download it any more.`)) return;
+  const del = li.querySelector(".btn-del");
+  li.querySelectorAll("button").forEach(b => b.disabled = true); del.textContent = "Deleting...";
+  try {
+    mods = (await api("/delete", { id: m.id })).mods; renderMods();
+    show("storeMsg", `Deleted ${m.name}. It disappears from Zombonk in a few minutes.`);
+  } catch (e) {
+    li.querySelectorAll("button").forEach(b => b.disabled = false); del.textContent = "Delete";
+    show("storeMsg"); alert(e.message);
+  }
+}
+
+// The dropdown under a store mod: drop the new zip, adjust the details, release.
+function buildUpdate(box, m) {
+  box.innerHTML = `
+    <div class="drop" role="button" tabindex="0"><strong>Drop the new .zip here</strong>or click to pick it</div>
+    <div class="file-ok" hidden><div class="meta"><div class="fname"></div><div class="fsub"></div></div><button class="btn btn-ghost" type="button" data-k="change">Change</button></div>
+    <input type="file" accept=".zip,application/zip" hidden>
+    <div class="grid2">
+      <div><label>New version</label><input data-f="version"><p class="field-hint"></p></div>
+      <div><label>Made by</label><input data-f="creator" maxlength="80"></div>
+    </div>
+    <div><label>Short description</label><input data-f="summary" maxlength="300"></div>
+    <div><label>About</label><textarea data-f="about" maxlength="5000" placeholder="Optional"></textarea></div>
+    <div class="notice err" hidden></div>
+    <div class="actions"><button class="btn btn-primary" type="button" data-k="go" disabled>Release update</button><span class="hint" data-k="why">Add the new zip first.</span></div>`;
+  const q = sel => box.querySelector(sel), f = k => q(`[data-f="${k}"]`);
+  q(".field-hint").textContent = `Currently v${m.version}.`;
+  f("version").value = bump(m.version); f("creator").value = m.creator; f("summary").value = m.summary || "";
+  f("about").value = m.description && m.description !== m.summary ? m.description : "";
+  let zip = null;
+  const err = msg => { q(".notice").textContent = msg || ""; q(".notice").hidden = !msg; };
+  const check = () => {
+    const why = !zip ? "Add the new zip first." : !f("version").value.trim() ? "Enter a version." : f("version").value.trim() === m.version ? "Raise the version so players see the update." : "";
+    q('[data-k="go"]').disabled = !!why; q('[data-k="why"]').textContent = why;
+  };
+  const pick = async file => {
+    if (!file) return;
+    err();
+    if (!/\.zip$/i.test(file.name)) return err(`"${file.name}" isn't a .zip.`);
+    q(".drop strong").textContent = "Checking...";
+    try {
+      zip = await repack(file);
+      q(".fname").textContent = file.name;
+      q(".fsub").textContent = `Looks good: ${zip.patches.join(", ")}, ${size(zip.bytes.length)}.`;
+      q(".drop").hidden = true; q(".file-ok").hidden = false;
+    } catch (e) { zip = null; err(e.message); }
+    finally { q(".drop strong").textContent = "Drop the new .zip here"; check(); }
+  };
+  const input = q('input[type="file"]');
+  q(".drop").onclick = q('[data-k="change"]').onclick = () => input.click();
+  q(".drop").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } };
+  input.onchange = () => pick(input.files[0]);
+  q(".drop").ondragover = e => { e.preventDefault(); e.stopPropagation(); q(".drop").classList.add("over"); };
+  q(".drop").ondragleave = () => q(".drop").classList.remove("over");
+  q(".drop").ondrop = e => { e.preventDefault(); e.stopPropagation(); q(".drop").classList.remove("over"); pick(e.dataTransfer.files[0]); };
+  for (const k of ["version", "creator"]) f(k).oninput = check;
+  q('[data-k="go"]').onclick = async () => {
+    const go = q('[data-k="go"]');
+    err(); go.disabled = true; go.textContent = "Releasing...";
+    try {
+      const res = await api("/upload", {
+        name: m.name, creator: f("creator").value.trim() || m.creator, version: f("version").value.trim(),
+        tags: (m.tags || []).join(", "), summary: f("summary").value, about: f("about").value,
+        file: new File([zip.bytes], "mod.zip", { type: "application/zip" }),
+      });
+      mods = res.mods; renderMods();
+      show("storeMsg", `Updated ${m.name} to v${res.entry.version}. It goes live in a few minutes.`);
+    } catch (e) {
+      err(e.message); go.textContent = "Release update"; check();
+    }
+  };
+}
+
+// ---------- Wiring ----------
+$("loginForm").onsubmit = login;
+$("guest").onclick = enterGuest;
+$("publish").onclick = publish;
+$("another").onclick = reset;
+$("changeFile").onclick = () => $("file").click();
+$("drop").onclick = () => $("file").click();
+$("drop").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } };
+$("file").onchange = e => pickFile(e.target.files[0]);
+$("filter").oninput = renderMods;
+for (const id of ["name", "creator", "version", "summary", "tags"]) $(id).oninput = update;
+// Accept a zip dropped anywhere on the page.
+document.addEventListener("dragover", e => { e.preventDefault(); if (unlocked()) $("drop").classList.add("over"); });
+document.addEventListener("dragleave", e => { if (!e.relatedTarget) $("drop").classList.remove("over"); });
+document.addEventListener("drop", e => {
+  e.preventDefault(); $("drop").classList.remove("over");
+  if (!unlocked()) return show("loginErr", "Unlock first, then drop the zip.");
+  pickFile(e.dataTransfer.files[0]);
+});
+
+// Never remember the password: clear any earlier saved copy.
+try { sessionStorage.removeItem("uploadPw"); } catch {}
+update();
+</script>
+</body>
+</html>
